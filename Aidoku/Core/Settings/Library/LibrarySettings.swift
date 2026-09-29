@@ -26,6 +26,7 @@ struct LibrarySettings: Sendable {
             lockedCategories,
             showUncategorizedCategory,
             updateInterval,
+            concurrentUpdates,
             skipTitles,
             excludedUpdateCategories,
             backgroundRefresh,
@@ -55,6 +56,7 @@ struct LibrarySettings: Sendable {
     let showUncategorizedCategory = SettingsKey<Bool>("Library.showUncategorizedCategory", default: false)
 
     let updateInterval = SettingsKey<String>("Library.updateInterval", default: "daily")
+    let concurrentUpdates = SettingsKey<String>("Library.concurrentUpdates", default: "3")
     let skipTitles = SettingsKey<[String]>("Library.skipTitles", default: ["hasUnread", "completed", "notStarted"])
     let excludedUpdateCategories = SettingsKey<[String]>("Library.excludedUpdateCategories", default: [])
     let backgroundRefresh = SettingsKey<Bool>("Library.backgroundRefresh", default: true)
