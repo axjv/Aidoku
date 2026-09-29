@@ -14,6 +14,7 @@ struct LibrarySettings: Sendable {
             sortAscending,
             listView,
             lastUpdated,
+            lastRefreshAttempt,
             opensReaderView,
             resumeLastOpenedChapter,
             continueReadingOnReselect,
@@ -41,6 +42,7 @@ struct LibrarySettings: Sendable {
     let listView = SettingsKey<Bool>("Library.listView", default: false)
 
     let lastUpdated = SettingsKey<Date>("Library.lastUpdated", default: Date.distantPast)
+    let lastRefreshAttempt = SettingsKey<Date>("Library.lastRefreshAttempt", default: Date.distantPast)
     let opensReaderView = SettingsKey<Bool>("Library.opensReaderView", default: false)
     let resumeLastOpenedChapter = SettingsKey<Bool>("Library.resumeLastOpenedChapter", default: false)
     let continueReadingOnReselect = SettingsKey<Bool>("Library.continueReadingOnReselect", default: true)
