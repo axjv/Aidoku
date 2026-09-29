@@ -117,44 +117,47 @@ extension CoreDataManager {
     ) -> [ChapterObject] {
         guard let manga = getManga(mangaId: mangaId, context: context) else { return [] }
 
-        var newChapters = Array(chapters.enumerated())
+        // Index incoming chapters once so matching existing chapters is O(1) instead of
+        // repeatedly scanning and removing from the full chapter array.
+        var incomingChapters: [String: (offset: Int, chapter: AidokuRunner.Chapter)] = [:]
+        for (offset, chapter) in chapters.enumerated() where incomingChapters[chapter.id] == nil {
+            // Preserve the previous behavior of using the first occurrence when a source
+            // unexpectedly returns duplicate chapter IDs.
+            incomingChapters[chapter.id] = (offset, chapter)
+        }
 
         // update existing chapter objects
         let chapterObjects = getChapters(mangaId: mangaId, context: context)
         var chapterIds: Set<String> = Set()
         for object in chapterObjects {
-            if let newChapter = newChapters.first(where: { $0.element.id == object.id }) {
+            if let newChapter = incomingChapters[object.id] {
                 let (inserted, _) = chapterIds.insert(object.id)
                 if !inserted {
                     context.delete(object) // remove duplicates
-                }
-                let becameUnlocked = object.locked && !newChapter.element.locked
-                if becameUnlocked {
-                    context.delete(object) // treat unlocked chapters as new ones
                 } else {
-                    object.load(
-                        from: newChapter.element,
-                        mangaId: mangaId,
-                        sourceOrder: newChapter.offset
-                    )
-                    object.manga = manga
-                    newChapters.removeAll { $0.element.id == object.id }
+                    let becameUnlocked = object.locked && !newChapter.chapter.locked
+                    if becameUnlocked {
+                        context.delete(object) // treat unlocked chapters as new ones
+                    } else {
+                        object.load(
+                            from: newChapter.chapter,
+                            mangaId: mangaId,
+                            sourceOrder: newChapter.offset
+                        )
+                        object.manga = manga
+                        incomingChapters.removeValue(forKey: object.id)
+                    }
                 }
             } else {
                 context.delete(object)
             }
         }
 
-        // create new chapter objects
+        // Walk source order once, consuming each remaining ID only once. Existing
+        // objects were reconciled above, so no per-chapter database count is needed.
         var newChaptersCreated = [ChapterObject]()
-        for (offset, chapter) in newChapters where !hasChapter(
-            chapterId: .init(
-                sourceKey: mangaId.sourceKey,
-                mangaKey: mangaId.mangaKey,
-                chapterKey: chapter.id
-            ),
-            context: context
-        ) {
+        for (offset, chapter) in chapters.enumerated() {
+            guard incomingChapters.removeValue(forKey: chapter.id) != nil else { continue }
             if let chapterObject = createChapter(
                 chapter,
                 mangaId: mangaId,

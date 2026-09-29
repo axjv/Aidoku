@@ -1,0 +1,14 @@
+name: Chapter reconciliation regression
+
+on:
+  push:
+    branches: [perf/library-chapter-reconciliation]
+  workflow_dispatch:
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Validate linear chapter reconciliation
+        run: python3 .github/tests/test_chapter_reconciliation.py
