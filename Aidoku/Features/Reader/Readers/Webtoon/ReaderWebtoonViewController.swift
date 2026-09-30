@@ -387,6 +387,10 @@ extension ReaderWebtoonViewController {
     }
 
     override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
+        let offset = scrollView.contentOffset
+        scrollView.setContentOffset(offset, animated: false)
+        collectionNode.contentOffset = offset
+
         let layout = collectionNode.collectionViewLayout as? VerticalContentOffsetPreservingLayout
         layout?.preserveVisiblePosition()
 
