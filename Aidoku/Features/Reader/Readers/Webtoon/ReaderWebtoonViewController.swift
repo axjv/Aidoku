@@ -386,10 +386,119 @@ extension ReaderWebtoonViewController {
         scrollViewDidScroll(scrollView)
     }
 
-    // fix content size when rotating
-    // TODO: fix scroll offset when rotating
+    private struct RotationAnchor {
+        let indexPath: IndexPath
+        let position: CGPoint
+    }
+
+    private func captureRotationAnchor() -> RotationAnchor? {
+        let bounds = collectionNode.bounds
+        let center = CGPoint(x: bounds.midX, y: bounds.midY)
+        guard
+            let attributes = collectionNode.collectionViewLayout.layoutAttributesForElements(in: bounds)?
+                .filter({ $0.representedElementCategory == .cell && $0.frame.width > 0 && $0.frame.height > 0 })
+                .min(by: {
+                    let first = max($0.frame.minY - center.y, center.y - $0.frame.maxY, 0)
+                    let second = max($1.frame.minY - center.y, center.y - $1.frame.maxY, 0)
+                    return first < second
+                })
+        else { return nil }
+
+        return RotationAnchor(
+            indexPath: attributes.indexPath,
+            position: CGPoint(
+                x: (center.x - attributes.frame.minX) / attributes.frame.width,
+                y: (center.y - attributes.frame.minY) / attributes.frame.height
+            )
+        )
+    }
+
+    private func rotationOffset(for anchor: RotationAnchor?) -> CGPoint? {
+        guard
+            let anchor,
+            let attributes = collectionNode.collectionViewLayout.layoutAttributesForItem(at: anchor.indexPath)
+        else { return nil }
+
+        let frame = attributes.frame
+        let inset = scrollView.adjustedContentInset
+        let minimum = CGPoint(x: -inset.left, y: -inset.top)
+        let maximum = CGPoint(
+            x: max(minimum.x, scrollView.contentSize.width - scrollView.bounds.width + inset.right),
+            y: max(minimum.y, scrollView.contentSize.height - scrollView.bounds.height + inset.bottom)
+        )
+
+        return CGPoint(
+            x: min(max(frame.minX + frame.width * anchor.position.x - scrollView.bounds.width / 2, minimum.x), maximum.x),
+            y: min(max(frame.minY + frame.height * anchor.position.y - scrollView.bounds.height / 2, minimum.y), maximum.y)
+        )
+    }
+
+    private func rotationOffset(for anchor: RotationAnchor?, at size: CGSize) -> CGPoint? {
+        guard
+            let anchor,
+            let layout = collectionNode.collectionViewLayout as? VerticalContentOffsetPreservingLayout
+        else { return nil }
+
+        let wasPortrait = pillarboxLayoutState.isPortrait
+        pillarboxLayoutState.setIsPortrait(size.height >= size.width)
+        defer { pillarboxLayoutState.setIsPortrait(wasPortrait) }
+
+        var originY: CGFloat = 0
+        var anchorY: CGFloat?
+
+        for section in pages.indices {
+            for item in pages[section].indices {
+                let indexPath = IndexPath(item: item, section: section)
+                guard let node = collectionNode.nodeForItem(at: indexPath) as? HeightQueryable else {
+                    return nil
+                }
+
+                let height = node.getHeight(for: size)
+                if indexPath == anchor.indexPath {
+                    anchorY = originY + height * anchor.position.y
+                }
+                originY += height + layout.spacing
+            }
+        }
+
+        guard let anchorY else { return nil }
+
+        let scale = scrollView.zoomScale
+        let contentSize = CGSize(
+            width: size.width * scale,
+            height: originY * scale
+        )
+        let minimum = CGPoint(
+            x: -scrollView.adjustedContentInset.left,
+            y: -scrollView.adjustedContentInset.top
+        )
+        let maximum = CGPoint(
+            x: max(minimum.x, contentSize.width - size.width + scrollView.adjustedContentInset.right),
+            y: max(minimum.y, contentSize.height - size.height + scrollView.adjustedContentInset.bottom)
+        )
+
+        let offset = CGPoint(
+            x: size.width * anchor.position.x * scale - size.width / 2,
+            y: anchorY * scale - size.height / 2
+        )
+        return CGPoint(
+            x: min(max(offset.x, minimum.x), maximum.x),
+            y: min(max(offset.y, minimum.y), maximum.y)
+        )
+    }
+
     override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
         super.viewWillTransition(to: size, with: coordinator)
+
+        let anchor = captureRotationAnchor()
+        let originalOffset = collectionNode.contentOffset
+        let targetOffset = rotationOffset(for: anchor, at: size)
+        let translation = targetOffset.map {
+            CGPoint(
+                x: originalOffset.x - $0.x,
+                y: originalOffset.y - $0.y
+            )
+        } ?? .zero
 
         coordinator.animate { [weak self] _ in
             guard let self else { return }
@@ -400,6 +509,39 @@ extension ReaderWebtoonViewController {
             self.collectionNode.invalidateCalculatedLayout()
             self.collectionNode.collectionViewLayout.invalidateLayout()
             self.zoomView.adjustContentSize()
+
+            self.collectionNode.view.transform = CGAffineTransform(
+                translationX: translation.x,
+                y: translation.y
+            )
+        } completion: { [weak self] context in
+            guard let self else { return }
+
+            guard
+                !context.isCancelled,
+                let offset = rotationOffset(for: anchor)
+            else {
+                collectionNode.view.transform = .identity
+                return
+            }
+
+            let currentOffset = collectionNode.contentOffset
+            let exactTranslation = CGPoint(
+                x: currentOffset.x - offset.x,
+                y: currentOffset.y - offset.y
+            )
+
+            UIView.performWithoutAnimation {
+                self.collectionNode.view.transform = CGAffineTransform(
+                    translationX: exactTranslation.x,
+                    y: exactTranslation.y
+                )
+                self.scrollView.contentOffset = offset
+                self.collectionNode.contentOffset = offset
+                self.collectionNode.view.transform = .identity
+            }
+
+            scrollViewDidScroll(scrollView)
         }
     }
 }
