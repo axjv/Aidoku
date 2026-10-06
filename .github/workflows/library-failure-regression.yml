@@ -1,0 +1,14 @@
+name: Library failure handling regression
+
+on:
+  push:
+    branches: [fix/library-refresh-failure-handling]
+  workflow_dispatch:
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Validate refresh failure handling
+        run: python3 .github/tests/test_library_failure_handling.py
