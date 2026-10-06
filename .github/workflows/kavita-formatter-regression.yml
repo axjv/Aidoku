@@ -1,0 +1,14 @@
+name: Kavita formatter regression
+
+on:
+  push:
+    branches: [perf/kavita-date-formatters]
+  workflow_dispatch:
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Validate per-response date formatters
+        run: python3 .github/tests/test_kavita_formatters.py
