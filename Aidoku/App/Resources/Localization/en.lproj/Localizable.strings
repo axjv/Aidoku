@@ -479,6 +479,7 @@
 "PIN_UPDATED_CHAPTERS" = "Updated Chapters";
 "LIBRARY_UPDATING" = "Library Updating";
 "UPDATE_INTERVAL" = "Update Interval";
+"CONCURRENT_UPDATES" = "Concurrent Updates";
 "SKIP_TITLES" = "Skip Titles";
 "ONLY_UPDATE_ON_WIFI" = "Only Update on Wi-Fi";
 "ONLY_DOWNLOAD_ON_WIFI" = "Only Download on Wi-Fi";
