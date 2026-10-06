@@ -1,0 +1,28 @@
+name: Library feature regression tests
+
+on:
+  push:
+    branches: [build/all-fixes-upstream]
+    paths:
+      - 'Aidoku/Core/Database/**'
+      - 'Aidoku/Core/Library/**'
+      - 'Aidoku/Core/Settings/Library/**'
+      - 'Aidoku/Core/Sources/BuiltIn/Kavita/**'
+      - 'Aidoku/Features/Settings/**'
+      - '.github/tests/**'
+      - '.github/workflows/library-feature-regression.yml'
+  workflow_dispatch:
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Chapter reconciliation
+        run: python3 .github/tests/test_chapter_reconciliation.py
+      - name: Kavita formatter reuse
+        run: python3 .github/tests/test_kavita_formatters.py
+      - name: Library concurrency
+        run: python3 .github/tests/test_library_concurrency.py
+      - name: Library failure handling
+        run: python3 .github/tests/test_library_failure_handling.py

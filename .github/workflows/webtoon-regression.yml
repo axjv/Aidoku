@@ -1,0 +1,27 @@
+name: Webtoon layout regression tests
+
+on:
+  push:
+    branches: [build/all-fixes-upstream]
+    paths:
+      - 'Aidoku/Features/Reader/**'
+      - 'AidokuTests/WebtoonLayoutTests.swift'
+      - '.github/workflows/webtoon-regression.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '26.6'
+      - name: Install iOS simulator
+        run: |
+          xcrun simctl list > /dev/null
+          xcodebuild -downloadPlatform iOS
+      - name: Run layout regression tests
+        run: |
+          DEVICE_ID=$(xcrun simctl list devices available -j | python3 -c 'import json, sys; devices = json.load(sys.stdin)["devices"]; print(next(d["udid"] for runtime, group in devices.items() if ".iOS-" in runtime for d in group if d["name"].startswith("iPhone")))')
+          xcodebuild test -scheme Aidoku -destination "platform=iOS Simulator,id=$DEVICE_ID" -only-testing:AidokuTests/WebtoonLayoutTests -skipPackagePluginValidation CODE_SIGNING_ALLOWED=NO

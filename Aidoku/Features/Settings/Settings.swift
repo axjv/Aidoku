@@ -313,6 +313,14 @@ extension Settings {
                         ))
                     ),
                     .init(
+                        key: AppSettings.library.concurrentUpdates.key,
+                        title: NSLocalizedString("CONCURRENT_UPDATES"),
+                        value: .select(.init(
+                            values: ["1", "2", "3", "4", "6", "8", "10"],
+                            titles: ["1", "2", "3", "4", "6", "8", "10"]
+                        ))
+                    ),
+                    .init(
                         key: AppSettings.library.skipTitles.key,
                         title: NSLocalizedString("SKIP_TITLES"),
                         value: .multiselect(.init(

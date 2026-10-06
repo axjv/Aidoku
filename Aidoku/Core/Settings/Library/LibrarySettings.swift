@@ -14,6 +14,7 @@ struct LibrarySettings: Sendable {
             sortAscending,
             listView,
             lastUpdated,
+            lastRefreshAttempt,
             opensReaderView,
             resumeLastOpenedChapter,
             continueReadingOnReselect,
@@ -26,6 +27,7 @@ struct LibrarySettings: Sendable {
             lockedCategories,
             showUncategorizedCategory,
             updateInterval,
+            concurrentUpdates,
             skipTitles,
             excludedUpdateCategories,
             backgroundRefresh,
@@ -41,6 +43,7 @@ struct LibrarySettings: Sendable {
     let listView = SettingsKey<Bool>("Library.listView", default: false)
 
     let lastUpdated = SettingsKey<Date>("Library.lastUpdated", default: Date.distantPast)
+    let lastRefreshAttempt = SettingsKey<Date>("Library.lastRefreshAttempt", default: Date.distantPast)
     let opensReaderView = SettingsKey<Bool>("Library.opensReaderView", default: false)
     let resumeLastOpenedChapter = SettingsKey<Bool>("Library.resumeLastOpenedChapter", default: false)
     let continueReadingOnReselect = SettingsKey<Bool>("Library.continueReadingOnReselect", default: true)
@@ -55,6 +58,7 @@ struct LibrarySettings: Sendable {
     let showUncategorizedCategory = SettingsKey<Bool>("Library.showUncategorizedCategory", default: false)
 
     let updateInterval = SettingsKey<String>("Library.updateInterval", default: "daily")
+    let concurrentUpdates = SettingsKey<String>("Library.concurrentUpdates", default: "3")
     let skipTitles = SettingsKey<[String]>("Library.skipTitles", default: ["hasUnread", "completed", "notStarted"])
     let excludedUpdateCategories = SettingsKey<[String]>("Library.excludedUpdateCategories", default: [])
     let backgroundRefresh = SettingsKey<Bool>("Library.backgroundRefresh", default: true)
