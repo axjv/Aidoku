@@ -34,6 +34,46 @@ class VerticalContentOffsetPreservingLayout: UICollectionViewFlowLayout {
 
     private var currentAttributes: [IndexPath: UICollectionViewLayoutAttributes] = [:]
 
+    private struct ViewportAnchor {
+        let indexPath: IndexPath
+        let position: CGPoint
+    }
+
+    private var preservedViewportAnchor: ViewportAnchor?
+    var onOffsetPreserved: ((CGPoint) -> Void)?
+
+    func preserveVisiblePosition() {
+        guard let collectionView else { return }
+
+        let bounds = collectionView.bounds
+        let center = CGPoint(x: bounds.midX, y: bounds.midY)
+        guard
+            let attributes = layoutAttributesForElements(in: bounds)?
+                .filter({ $0.representedElementCategory == .cell && $0.frame.width > 0 && $0.frame.height > 0 })
+                .min(by: {
+                    let first = max($0.frame.minY - center.y, center.y - $0.frame.maxY, 0)
+                    let second = max($1.frame.minY - center.y, center.y - $1.frame.maxY, 0)
+                    return first < second
+                })
+        else {
+            preservedViewportAnchor = nil
+            return
+        }
+
+        preservedViewportAnchor = ViewportAnchor(
+            indexPath: attributes.indexPath,
+            position: CGPoint(
+                x: (center.x - attributes.frame.minX) / attributes.frame.width,
+                y: (center.y - attributes.frame.minY) / attributes.frame.height
+            )
+        )
+    }
+
+    func clearPreservedPosition() {
+        preservedViewportAnchor = nil
+        onOffsetPreserved = nil
+    }
+
     override init() {
         super.init()
         scrollDirection = .vertical
@@ -99,6 +139,32 @@ class VerticalContentOffsetPreservingLayout: UICollectionViewFlowLayout {
             }
         }
 
+        // Keep the same point in the visible page fixed as its size changes during rotation.
+        if
+            let anchor = preservedViewportAnchor,
+            let attributes = currentAttributes[anchor.indexPath]
+        {
+            let frame = attributes.frame
+            let size = collectionView.bounds.size
+            let inset = collectionView.adjustedContentInset
+            let minimum = CGPoint(x: -inset.left, y: -inset.top)
+            let maximum = CGPoint(
+                x: max(minimum.x, collectionViewContentSize.width - size.width + inset.right),
+                y: max(minimum.y, collectionViewContentSize.height - size.height + inset.bottom)
+            )
+            let offset = CGPoint(
+                x: min(max(frame.minX + frame.width * anchor.position.x - size.width / 2, minimum.x), maximum.x),
+                y: min(max(frame.minY + frame.height * anchor.position.y - size.height / 2, minimum.y), maximum.y)
+            )
+
+            if collectionView.contentOffset != offset {
+                UIView.performWithoutAnimation {
+                    collectionView.contentOffset = offset
+                    onOffsetPreserved?(offset)
+                }
+            }
+        }
+
         // preserve offset when inserting cells above
         if isInsertingCellsAbove {
             if let oldContentSize = contentSizeBeforeInsertingAbove {
@@ -113,6 +179,11 @@ class VerticalContentOffsetPreservingLayout: UICollectionViewFlowLayout {
             contentSizeBeforeInsertingAbove = nil
             isInsertingCellsAbove = false
         }
+    }
+
+    override func shouldInvalidateLayout(forBoundsChange newBounds: CGRect) -> Bool {
+        guard let collectionView else { return false }
+        return collectionView.bounds.size != newBounds.size
     }
 
     func getHeight(for indexPath: IndexPath) -> CGFloat {

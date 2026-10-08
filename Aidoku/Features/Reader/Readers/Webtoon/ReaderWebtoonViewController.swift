@@ -386,9 +386,20 @@ extension ReaderWebtoonViewController {
         scrollViewDidScroll(scrollView)
     }
 
-    // fix content size when rotating
-    // TODO: fix scroll offset when rotating
     override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
+        // Stop active scroll deceleration before capturing the rotation anchor.
+        let offset = scrollView.contentOffset
+        scrollView.setContentOffset(offset, animated: false)
+        collectionNode.contentOffset = offset
+
+        let layout = collectionNode.collectionViewLayout as? VerticalContentOffsetPreservingLayout
+        layout?.onOffsetPreserved = { [weak self] offset in
+            guard let self else { return }
+            zoomView.adjustContentSize()
+            scrollView.setContentOffset(offset, animated: false)
+        }
+        layout?.preserveVisiblePosition()
+
         super.viewWillTransition(to: size, with: coordinator)
 
         coordinator.animate { [weak self] _ in
@@ -400,6 +411,14 @@ extension ReaderWebtoonViewController {
             self.collectionNode.invalidateCalculatedLayout()
             self.collectionNode.collectionViewLayout.invalidateLayout()
             self.zoomView.adjustContentSize()
+        } completion: { [weak self] _ in
+            guard let self else { return }
+
+            collectionNode.view.layoutIfNeeded()
+            let offset = collectionNode.contentOffset
+            zoomView.adjustContentSize()
+            scrollView.setContentOffset(offset, animated: false)
+            layout?.clearPreservedPosition()
         }
     }
 }
